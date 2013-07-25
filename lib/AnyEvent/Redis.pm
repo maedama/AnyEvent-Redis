@@ -60,6 +60,7 @@ sub cleanup {
     my $self = shift;
     delete $self->{cmd_cb};
     delete $self->{sock};
+    delete $self->{hd};
     $self->{on_error}->(@_) if $self->{on_error};
     $self->{on_cleanup}->(@_) if $self->{on_cleanup};
     for (splice(@{$self->{pending_cvs}}),
@@ -98,14 +99,17 @@ sub connect {
 
         my $hd = AnyEvent::Handle->new(
             fh => $fh,
-            on_error => sub { $_[0]->destroy;
+            on_error      => sub { $_[0]->destroy;
                               $self->cleanup($_[2]) if $_[1];
                           },
-            on_eof   => sub { $_[0]->destroy;
+            on_eof        => sub { $_[0]->destroy;
                               $self->cleanup('connection closed');
                           },
-            encoding => $self->{encoding},
+            encoding      => $self->{encoding},
+            read_size     => $self->{read_size},
+            max_read_size => $self->{max_read_size},
         );
+        $self->{hd} = $hd;
 
         $self->{cmd_cb} = sub {
             my $command = lc shift;

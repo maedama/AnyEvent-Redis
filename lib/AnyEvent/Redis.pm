@@ -113,8 +113,9 @@ sub connect {
 
         $self->{cmd_cb} = sub {
             my $command = lc shift;
-            my $is_pubsub    = $command =~ /^p?(?:un)?subscribe\z/;
             my $is_subscribe = $command =~ /^p?subscribe\z/;
+            my $is_unsubscribe = $command =~ /^p?unsubscribe\z/;
+            my $is_pubsub    = $is_subscribe || $is_unsubscribe;
 
 
             # Are we already subscribed to anything?
@@ -167,6 +168,13 @@ sub connect {
                 if ($is_subscribe) {
                     $self->{sub}->{$_} ||= [$cv, $cb] for @_;
                 }
+                if ($is_unsubscribe) {
+                    for (@_) {
+                        eval { $self->{sub}->{$_}[0]->send };
+                        warn "Exception in callback (ignored): $@" if $@;
+                        delete $self->{sub}->{$_};
+                    }
+                }
 
                 if (!$already && @_) {
                     my $res_cb; $res_cb = sub {
@@ -188,9 +196,6 @@ sub connect {
 
                                 } elsif ($action eq 'unsubscribe' || $action eq 'punsubscribe') {
                                     $self->{sub_count} = $res->[2];
-                                    eval { $self->{sub}->{$res->[1]}[0]->send };
-                                    warn "Exception in callback (ignored): $@" if $@;
-                                    delete $self->{sub}->{$res->[1]};
                                     $self->all_cv->end;
                                     $cmd_cv->send;
 

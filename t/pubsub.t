@@ -31,6 +31,30 @@ test_redis {
                 is $x, $expected_x, "Messages received, values as expected";
             }
         });
+    
+    subtest 'subscribe immediately called after unsub' => sub {
+        my $first_sub_call_count = 0;
+        my $second_sub_call_count = 0;
+        my $cv = AE::cv;
+        $sub->subscribe("test.2", sub {
+            $first_sub_call_count++;
+            $cv->send;
+        });
+        $sub->unsubscribe("test.2");
+        $sub->subscribe("test.2", sub {
+            $second_sub_call_count;
+            $cv->send;
+        });
+        my $timer = AnyEvent->timer(
+            cb => sub { $cv->croak; },
+            after => 2,
+        );
+        $pub->publish("test.2", "foo");
+        $cv->recv;
+        is $first_sub_call_count, 0;
+        is $second_sub_call_count, 0;
+        undef $timer;
+    };
 
     # Pattern subscription
     my $y = 0;

@@ -186,8 +186,8 @@ sub connect {
                                 warn "$action $res->[1]" if DEBUG;
 
                                 if ($action eq 'message') {
-                                    $self->{sub}->{$res->[1]}[1]->($res->[2], $res->[1]);
-
+                                    eval { $self->{sub}->{$res->[1]}[1]->($res->[2], $res->[1]); };
+                                    warn "Execption in callback (ignored): $@" if $@;
                                 } elsif ($action eq 'pmessage') {
                                     $self->{sub}->{$res->[1]}[1]->($res->[3], $res->[2], $res->[1]);
 
